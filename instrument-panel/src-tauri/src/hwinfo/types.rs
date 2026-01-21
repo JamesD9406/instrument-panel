@@ -36,7 +36,7 @@ pub struct GpuData {
     pub power_w: Option<f64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StorageData {
     pub nvme_temp_c: Option<f64>,
@@ -52,7 +52,7 @@ impl Default for StorageData {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SystemData {
     pub uptime_seconds: Option<u64>,
