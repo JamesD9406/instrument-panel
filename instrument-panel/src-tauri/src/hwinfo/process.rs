@@ -4,7 +4,7 @@ use std::process::Command;
 /// Check if HWiNFO64.exe or HWiNFO32.exe is running
 pub fn is_running() -> bool {
     let mut sys = System::new();
-    sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+    sys.refresh_processes(sysinfo::ProcessesToUpdate::All);
     
     for process in sys.processes().values() {
         let name = process.name().to_string_lossy().to_lowercase();
