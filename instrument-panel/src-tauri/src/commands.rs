@@ -1,4 +1,4 @@
-use crate::hwinfo::{self, types::SensorData};
+use crate::hwinfo::{self, types::SensorData, shared_memory};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -64,4 +64,59 @@ pub fn save_settings(app: tauri::AppHandle, settings: AppSettings) -> Result<(),
     let json = serde_json::to_string_pretty(&settings)
         .map_err(|e| e.to_string())?;
     fs::write(path, json).map_err(|e| e.to_string())
+}
+
+/// Debug: dump all sensor info from HWiNFO shared memory
+#[tauri::command]
+pub fn debug_dump_sensors() -> Result<DebugDumpResult, String> {
+    shared_memory::debug_dump_sensors()
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DebugDumpResult {
+    pub header: HeaderDebugInfo,
+    pub sensors: Vec<SensorDebugInfo>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HeaderDebugInfo {
+    pub signature: String,
+    pub version: u32,
+    pub revision: u32,
+    pub sensor_section_offset: u32,
+    pub sensor_section_size: u32,
+    pub sensor_count: u32,
+    pub reading_section_offset: u32,
+    pub reading_section_size: u32,
+    pub reading_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SensorDebugInfo {
+    pub index: u32,
+    pub sensor_id: u32,
+    pub sensor_instance: u32,
+    pub name_original: String,
+    pub name_user: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReadingDebugInfo {
+    pub index: u32,
+    pub sensor_index: u32,
+    pub reading_type: u32,
+    pub label_original: String,
+    pub label_user: String,
+    pub unit: String,
+    pub value: f64,
+}
+
+/// Debug: dump all readings from HWiNFO shared memory
+#[tauri::command]
+pub fn debug_dump_readings(filter: Option<String>) -> Result<Vec<ReadingDebugInfo>, String> {
+    shared_memory::debug_dump_readings(filter)
 }

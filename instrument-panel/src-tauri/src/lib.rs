@@ -1,7 +1,7 @@
 mod commands;
 mod hwinfo;
 
-use commands::{get_sensor_data, is_hwinfo_running, launch_hwinfo, get_settings, save_settings};
+use commands::{get_sensor_data, is_hwinfo_running, launch_hwinfo, get_settings, save_settings, debug_dump_sensors, debug_dump_readings};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -13,7 +13,9 @@ pub fn run() {
             is_hwinfo_running,
             launch_hwinfo,
             get_settings,
-            save_settings
+            save_settings,
+            debug_dump_sensors,
+            debug_dump_readings
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
