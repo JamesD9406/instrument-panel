@@ -1,19 +1,24 @@
 /* ============================================
-   The Instrument Panel - Calm, Minimal Design
+   The Instrument Panel - Black & Teal Theme
+   Matching jamesdunford.com color scheme
    ============================================ */
 
 :root {
-  --bg-primary: #0f1419;
-  --bg-secondary: #1a1f26;
-  --bg-card: #1e252e;
-  --text-primary: #e7edf4;
-  --text-secondary: #8b98a8;
-  --text-muted: #5c6975;
-  --accent: #4a9eff;
-  --success: #34d399;
-  --warning: #fbbf24;
-  --error: #f87171;
-  --border: #2d3640;
+  --bg-primary: #09090b; /* zinc-950 */
+  --bg-secondary: #18181b; /* zinc-900 */
+  --bg-card: #18181b; /* zinc-900 */
+  --bg-card-hover: #27272a; /* zinc-800 */
+  --text-primary: #f4f4f5; /* zinc-100 */
+  --text-secondary: #a1a1aa; /* zinc-400 */
+  --text-muted: #71717a; /* zinc-500 */
+  --accent: #2dd4bf; /* teal-400 */
+  --accent-hover: #5eead4; /* teal-300 */
+  --accent-dim: rgba(45, 212, 191, 0.15); /* teal-400/15 */
+  --success: #34d399; /* emerald-400 */
+  --warning: #fbbf24; /* amber-400 */
+  --error: #f87171; /* red-400 */
+  --border: rgba(255, 255, 255, 0.1); /* white/10 */
+  --border-accent: rgba(45, 212, 191, 0.3); /* teal-400/30 */
   --border-radius: 8px;
 }
 
