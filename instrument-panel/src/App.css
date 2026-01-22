@@ -171,6 +171,7 @@ body {
 }
 
 .link-button:hover {
+  color: var(--accent-hover);
   text-decoration: underline;
 }
 
@@ -193,8 +194,9 @@ button {
 }
 
 button:hover {
-  background: var(--bg-card);
+  background: var(--bg-card-hover);
   border-color: var(--accent);
+  color: var(--accent);
 }
 
 button:disabled {
