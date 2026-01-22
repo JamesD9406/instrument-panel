@@ -67,19 +67,36 @@ unsafe fn read_shared_memory() -> Result<SensorData, String> {
         return Err(format!("Invalid HWiNFO signature: {:#X}", sig));
     }
 
-    // Read all sensor readings
+    // CPU data
     let mut cpu_temp: Option<f64> = None;
     let mut cpu_power: Option<f64> = None;
     let mut cpu_name: Option<String> = None;
+    let mut cpu_clock: Option<f64> = None;
+    let mut cpu_usage: Option<f64> = None;
+    let mut core_temps: Vec<f64> = Vec::new();
+    let mut cpu_sensor_index: Option<u32> = None;
+
+    // GPU data
     let mut gpu_hotspot: Option<f64> = None;
     let mut gpu_mem_junction: Option<f64> = None;
     let mut gpu_power: Option<f64> = None;
     let mut gpu_name: Option<String> = None;
     let mut gpu_sensor_index: Option<u32> = None;
-    let mut nvme_temp: Option<f64> = None;
-    let mut storage_name: Option<String> = None;
-    let mut storage_sensor_index: Option<u32> = None;
-    let mut fan_readings: Vec<f64> = Vec::new();
+    let mut gpu_core_clock: Option<f64> = None;
+    let mut gpu_mem_clock: Option<f64> = None;
+    let mut gpu_usage: Option<f64> = None;
+    let mut gpu_vram_used: Option<f64> = None;
+    let mut gpu_vram_total: Option<f64> = None;
+    let mut gpu_fan_rpm: Option<f64> = None;
+    let mut gpu_fan_percent: Option<f64> = None;
+
+    // Storage data - collect all drives
+    let mut drives: Vec<(u32, String, Option<String>)> = Vec::new(); // (sensor_index, name, drive_letter)
+    let mut drive_temps: std::collections::HashMap<u32, f64> = std::collections::HashMap::new();
+    let mut drive_health: std::collections::HashMap<u32, String> = std::collections::HashMap::new();
+
+    // Fan data
+    let mut fan_readings: Vec<FanReading> = Vec::new();
 
     // Read sensor names from sensor section
     for i in 0..sensor_count {
@@ -98,41 +115,32 @@ unsafe fn read_shared_memory() -> Result<SensorData, String> {
         if cpu_name.is_none() {
             if sensor_name_lower.contains("ryzen") || sensor_name_lower.contains("intel") || sensor_name_lower.contains("core i") {
                 cpu_name = Some(sensor_name.clone());
+                cpu_sensor_index = Some(i);
             }
         }
 
         // GPU name - prioritize discrete GPUs (NVIDIA) over integrated (AMD Radeon)
-        // Check for NVIDIA discrete GPU first
         if sensor_name_lower.contains("geforce") || sensor_name_lower.contains("rtx") || sensor_name_lower.contains("gtx") {
             gpu_name = Some(sensor_name.clone());
             gpu_sensor_index = Some(i);
-        }
-        // Only use AMD Radeon if no NVIDIA GPU found
-        else if gpu_name.is_none() && sensor_name_lower.contains("radeon") {
+        } else if gpu_name.is_none() && sensor_name_lower.contains("radeon") {
             gpu_name = Some(sensor_name.clone());
             gpu_sensor_index = Some(i);
         }
 
-        // Storage name - prefer NVMe on C: drive (OS drive), then any NVMe, then SATA
-        // Look for S.M.A.R.T. sensors which have temperature readings
+        // Storage - collect all S.M.A.R.T. sensors
         if sensor_name_lower.starts_with("s.m.a.r.t.") {
-            // Prefer C: drive (OS/game drive)
-            if sensor_name.contains("[C:]") {
-                storage_name = Some(sensor_name.clone());
-                storage_sensor_index = Some(i);
-            }
-            // Otherwise take first NVMe drive if no C: found yet
-            else if storage_name.is_none() || !storage_name.as_ref().map_or(false, |n| n.contains("[C:]")) {
-                if sensor_name_lower.contains("nvme") || sensor_name_lower.contains("nq780") || sensor_name_lower.contains("980") || sensor_name_lower.contains("lexar") {
-                    storage_name = Some(sensor_name.clone());
-                    storage_sensor_index = Some(i);
+            // Extract drive letter if present
+            let drive_letter = if let Some(start) = sensor_name.find('[') {
+                if let Some(end) = sensor_name.find(']') {
+                    Some(sensor_name[start+1..end].to_string())
+                } else {
+                    None
                 }
-            }
-            // Fallback to any drive if nothing else found
-            if storage_name.is_none() {
-                storage_name = Some(sensor_name.clone());
-                storage_sensor_index = Some(i);
-            }
+            } else {
+                None
+            };
+            drives.push((i, sensor_name.clone(), drive_letter));
         }
     }
 
@@ -144,98 +152,218 @@ unsafe fn read_shared_memory() -> Result<SensorData, String> {
         
         let reading = ptr::read_unaligned(reading_ptr as *const HWiNFOReading);
         
-        // Convert label to string for matching
         let label = String::from_utf8_lossy(&reading.label_original)
             .trim_end_matches('\0')
             .to_lowercase();
+        let label_original = String::from_utf8_lossy(&reading.label_original)
+            .trim_end_matches('\0')
+            .to_string();
 
-        // Match readings to our desired sensors
-        // CPU Package Temperature - match various labels HWiNFO uses
-        // "CPU Temp" (AMD Enhanced), "CPU (Tctl/Tdie)" (older AMD), "CPU Package" (Intel)
-        if cpu_temp.is_none() && reading.reading_type == ReadingType::Temp as u32 {
-            if label == "cpu temp"
-                || label.contains("cpu (tctl/tdie)")
-                || (label.contains("cpu") && label.contains("package") && label.contains("temp")) {
-                cpu_temp = Some(reading.value);
+        let is_cpu = cpu_sensor_index.map_or(false, |idx| reading.sensor_index == idx);
+        let is_gpu = gpu_sensor_index.map_or(false, |idx| reading.sensor_index == idx);
+
+        // CPU readings
+        if is_cpu {
+            // Package temperature - AMD uses "CPU (Tctl/Tdie)" or just "Tctl" or "Tdie"
+            if cpu_temp.is_none() && reading.reading_type == ReadingType::Temp as u32 {
+                if label == "cpu temp" || label.contains("tctl") || label.contains("tdie")
+                    || (label.contains("cpu") && label.contains("package")) {
+                    cpu_temp = Some(reading.value);
+                }
             }
-        }
-
-        // CPU Package Power - "CPU Power" (AMD Enhanced), "CPU Package Power" (Intel), "CPU PPT"
-        if cpu_power.is_none() && reading.reading_type == ReadingType::Power as u32 {
-            if label == "cpu power"
-                || label.contains("cpu package power")
-                || label == "cpu ppt" {
-                cpu_power = Some(reading.value);
-            }
-        }
-
-        // GPU readings - only from the selected GPU sensor
-        let is_target_gpu = gpu_sensor_index.map_or(false, |idx| reading.sensor_index == idx);
-
-        // GPU Temperature (main/hotspot) - "GPU Temp", "GPU Temperature", or "GPU Hot Spot"
-        if is_target_gpu && gpu_hotspot.is_none() && reading.reading_type == ReadingType::Temp as u32 {
-            if label == "gpu temp" || label == "gpu temperature" || label.contains("gpu hot spot") || label.contains("hotspot") {
-                gpu_hotspot = Some(reading.value);
-            }
-        }
-
-        // GPU Memory Junction Temperature
-        if is_target_gpu && label.contains("memory junction") {
+            // Per-core temperatures - AMD uses "Core X (CCD Y)" or similar
             if reading.reading_type == ReadingType::Temp as u32 {
-                gpu_mem_junction = Some(reading.value);
+                if (label.starts_with("core") && (label.contains("temp") || label.contains("ccd")))
+                    || label.contains("ccd") {
+                    core_temps.push(reading.value);
+                }
             }
-        }
-
-        // GPU Power - look for "GPU Power" but not limits/percentages
-        if is_target_gpu && gpu_power.is_none() {
-            if label == "gpu power" || (label.contains("gpu") && label.contains("power") && !label.contains("limit") && !label.contains("percent")) {
-                if reading.reading_type == ReadingType::Power as u32 {
-                    gpu_power = Some(reading.value);
+            // CPU power - AMD uses "CPU PPT" (Package Power Tracking)
+            if cpu_power.is_none() && reading.reading_type == ReadingType::Power as u32 {
+                if label == "cpu power" || label.contains("cpu package power")
+                    || label == "cpu ppt" || label.contains("ppt") {
+                    cpu_power = Some(reading.value);
+                }
+            }
+            // CPU clock (average or effective)
+            if cpu_clock.is_none() && reading.reading_type == ReadingType::Clock as u32 {
+                if label.contains("core") && (label.contains("clock") || label.contains("effective")) {
+                    cpu_clock = Some(reading.value);
+                }
+            }
+            // CPU usage
+            if cpu_usage.is_none() && reading.reading_type == ReadingType::Usage as u32 {
+                if label.contains("total") || label.contains("cpu") {
+                    cpu_usage = Some(reading.value);
                 }
             }
         }
 
-        // Storage/Drive Temperature - from the selected storage sensor
-        let is_target_storage = storage_sensor_index.map_or(false, |idx| reading.sensor_index == idx);
-        if is_target_storage && nvme_temp.is_none() && reading.reading_type == ReadingType::Temp as u32 {
-            // Look for drive temperature reading - HWiNFO uses various labels
-            // "Drive Temperature", "Drive Airflow Temperature", etc.
-            // Prefer the main "Drive Temperature" over secondary sensors
-            if label == "drive temperature" || label.contains("drive") {
-                nvme_temp = Some(reading.value);
+        // GPU readings
+        if is_gpu {
+            // GPU Temperature (hotspot)
+            if gpu_hotspot.is_none() && reading.reading_type == ReadingType::Temp as u32 {
+                if label == "gpu temp" || label == "gpu temperature" 
+                    || label.contains("gpu hot spot") || label.contains("hotspot") {
+                    gpu_hotspot = Some(reading.value);
+                }
+            }
+            // Memory Junction Temperature
+            if gpu_mem_junction.is_none() && label.contains("memory junction") {
+                if reading.reading_type == ReadingType::Temp as u32 {
+                    gpu_mem_junction = Some(reading.value);
+                }
+            }
+            // GPU Power
+            if gpu_power.is_none() && reading.reading_type == ReadingType::Power as u32 {
+                if label == "gpu power" || (label.contains("gpu") && label.contains("power") 
+                    && !label.contains("limit") && !label.contains("percent")) {
+                    gpu_power = Some(reading.value);
+                }
+            }
+            // GPU Core Clock
+            if gpu_core_clock.is_none() && reading.reading_type == ReadingType::Clock as u32 {
+                if label == "gpu clock" || label.contains("core clock") {
+                    gpu_core_clock = Some(reading.value);
+                }
+            }
+            // GPU Memory Clock
+            if gpu_mem_clock.is_none() && reading.reading_type == ReadingType::Clock as u32 {
+                if label.contains("memory clock") || label.contains("mem clock") {
+                    gpu_mem_clock = Some(reading.value);
+                }
+            }
+            // GPU Usage
+            if gpu_usage.is_none() && reading.reading_type == ReadingType::Usage as u32 {
+                if label == "gpu utilization" || label.contains("gpu core load") || label == "gpu usage" {
+                    gpu_usage = Some(reading.value);
+                }
+            }
+            // VRAM Used
+            if gpu_vram_used.is_none() && reading.reading_type == ReadingType::Other as u32 {
+                if label.contains("gpu memory used") || label.contains("vram used") 
+                    || label.contains("d3d dedicated") {
+                    gpu_vram_used = Some(reading.value);
+                }
+            }
+            // VRAM Total (often reported as "GPU Memory Allocated" or similar)
+            if gpu_vram_total.is_none() && reading.reading_type == ReadingType::Other as u32 {
+                if label.contains("gpu memory total") || label.contains("vram total") {
+                    gpu_vram_total = Some(reading.value);
+                }
+            }
+            // GPU Fan RPM
+            if gpu_fan_rpm.is_none() && reading.reading_type == ReadingType::Fan as u32 {
+                if label.contains("gpu") || label.contains("fan") {
+                    gpu_fan_rpm = Some(reading.value);
+                }
+            }
+            // GPU Fan %
+            if gpu_fan_percent.is_none() && reading.reading_type == ReadingType::Usage as u32 {
+                if label.contains("fan") && (label.contains("speed") || label.contains("%")) {
+                    gpu_fan_percent = Some(reading.value);
+                }
             }
         }
 
-        // Fan readings - collect all fan RPM values to determine status
-        if reading.reading_type == ReadingType::Fan as u32 {
-            // Only count non-zero fan readings (0 RPM usually means stopped or not detected)
-            if reading.value > 0.0 {
-                fan_readings.push(reading.value);
+        // Storage readings - match by sensor index
+        for (drive_idx, _, _) in &drives {
+            if reading.sensor_index == *drive_idx {
+                // Drive temperature - include "Drive Airflow Temperature" for SATA SSDs
+                if reading.reading_type == ReadingType::Temp as u32 {
+                    if label == "drive temperature" || label.contains("drive temp")
+                        || label.contains("airflow") {
+                        // Only store if we don't have a temp yet, or prefer non-airflow over airflow
+                        if !drive_temps.contains_key(drive_idx) {
+                            drive_temps.insert(*drive_idx, reading.value);
+                        }
+                    }
+                }
+                // SMART Health - look for remaining life or health indicators
+                // 70%+ = good, 30-70% = warning, <30% = critical
+                if label.contains("remaining life") || label.contains("health")
+                    || label.contains("life remaining") {
+                    let health = if reading.value >= 70.0 {
+                        "good".to_string()
+                    } else if reading.value >= 30.0 {
+                        "warning".to_string()
+                    } else {
+                        "critical".to_string()
+                    };
+                    drive_health.insert(*drive_idx, health);
+                }
+            }
+        }
+
+        // Fan readings (non-GPU fans)
+        if reading.reading_type == ReadingType::Fan as u32 && reading.value > 0.0 {
+            if !is_gpu {
+                fan_readings.push(FanReading {
+                    name: label_original,
+                    rpm: reading.value,
+                });
             }
         }
     }
 
-    // Get system uptime using Windows GetTickCount64 for more accurate boot time
-    let uptime_seconds = get_true_uptime_seconds();
+    // Build drive data
+    let mut drive_data: Vec<DriveData> = Vec::new();
+    let mut primary_storage = StorageData::default();
 
-    // Get PC name from sysinfo
+    for (idx, name, letter) in &drives {
+        let temp = drive_temps.get(idx).copied();
+        let health = drive_health.get(idx).cloned().unwrap_or_else(|| "unknown".to_string());
+        
+        // Get disk space info for this drive letter
+        let (total_gb, free_gb) = if let Some(ref letter) = letter {
+            get_disk_space(letter)
+        } else {
+            (None, None)
+        };
+
+        let drive = DriveData {
+            name: Some(name.clone()),
+            drive_letter: letter.clone(),
+            temp_c: temp,
+            smart_health: health.clone(),
+            total_gb,
+            free_gb,
+        };
+
+        // Set primary storage (prefer C: drive)
+        if letter.as_ref().map_or(false, |l| l == "C:") {
+            primary_storage = StorageData {
+                name: Some(name.clone()),
+                nvme_temp_c: temp,
+                smart_health: health,
+            };
+        } else if primary_storage.name.is_none() {
+            primary_storage = StorageData {
+                name: Some(name.clone()),
+                nvme_temp_c: temp,
+                smart_health: health,
+            };
+        }
+
+        drive_data.push(drive);
+    }
+
+    // Sort drives by letter
+    drive_data.sort_by(|a, b| {
+        a.drive_letter.as_deref().unwrap_or("Z")
+            .cmp(b.drive_letter.as_deref().unwrap_or("Z"))
+    });
+
+    // Get system uptime
+    let uptime_seconds = get_true_uptime_seconds();
     let pc_name = sysinfo::System::host_name();
 
-    // Determine fan status based on collected readings
+    // Determine fan status
     let fan_status = if fan_readings.is_empty() {
         "unknown".to_string()
     } else {
-        // Check if any fans are running at concerning speeds
-        // Very low RPM (< 200) might indicate stalled fan
-        // Very high RPM (> 3000 for most fans) might indicate high load
-        let has_stalled = fan_readings.iter().any(|&rpm| rpm < 200.0);
-        let _has_high = fan_readings.iter().any(|&rpm| rpm > 3000.0);
-
-        if has_stalled {
-            "warning".to_string()
-        } else {
-            "ok".to_string()
-        }
+        let has_stalled = fan_readings.iter().any(|f| f.rpm < 200.0);
+        if has_stalled { "warning".to_string() } else { "ok".to_string() }
     };
 
     // Clean up
@@ -254,24 +382,67 @@ unsafe fn read_shared_memory() -> Result<SensorData, String> {
             name: cpu_name,
             package_temp_c: cpu_temp,
             package_power_w: cpu_power,
+            core_clock_mhz: cpu_clock,
+            usage_percent: cpu_usage,
+            core_temps,
         },
         gpu: GpuData {
             name: gpu_name,
             hotspot_temp_c: gpu_hotspot,
             memory_junction_temp_c: gpu_mem_junction,
             power_w: gpu_power,
+            core_clock_mhz: gpu_core_clock,
+            memory_clock_mhz: gpu_mem_clock,
+            usage_percent: gpu_usage,
+            vram_used_mb: gpu_vram_used,
+            vram_total_mb: gpu_vram_total,
+            fan_speed_rpm: gpu_fan_rpm,
+            fan_speed_percent: gpu_fan_percent,
         },
-        storage: StorageData {
-            name: storage_name,
-            nvme_temp_c: nvme_temp,
-            smart_health: "unknown".to_string(), // Would need deeper parsing
-        },
+        storage: primary_storage,
+        drives: drive_data,
         system: SystemData {
             name: pc_name,
             uptime_seconds,
             fan_status,
+            fans: fan_readings,
         },
     })
+}
+
+/// Get disk space for a drive letter (e.g., "C:")
+fn get_disk_space(drive_letter: &str) -> (Option<f64>, Option<f64>) {
+    use std::ffi::OsString;
+    use std::os::windows::ffi::OsStrExt;
+    use windows::Win32::Storage::FileSystem::GetDiskFreeSpaceExW;
+    use windows::core::PCWSTR;
+
+    let path = format!("{}\\", drive_letter);
+    let wide: Vec<u16> = OsString::from(&path)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+
+    let mut free_bytes: u64 = 0;
+    let mut total_bytes: u64 = 0;
+    let mut _total_free: u64 = 0;
+
+    let result = unsafe {
+        GetDiskFreeSpaceExW(
+            PCWSTR(wide.as_ptr()),
+            Some(&mut free_bytes),
+            Some(&mut total_bytes),
+            Some(&mut _total_free),
+        )
+    };
+
+    if result.is_ok() {
+        let total_gb = total_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+        let free_gb = free_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+        (Some(total_gb), Some(free_gb))
+    } else {
+        (None, None)
+    }
 }
 
 /// Debug function to dump all sensor info

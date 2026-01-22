@@ -27,8 +27,11 @@ sysinfo = "0.31"              # For process detection
 windows = { version = "0.58", features = [
     "Win32_Foundation",
     "Win32_System_Memory",
-    "Win32_Security",
-    "Win32_System_SystemInformation"
-] }                             # For shared memory access
+    "Win32_System_SystemInformation",
+    "Win32_Storage_FileSystem"
+] }
+                            
+# For shared memory access
 chrono = { version = "0.4", features = ["serde"] }  # For timestamps
+
 

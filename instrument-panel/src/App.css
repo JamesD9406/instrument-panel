@@ -522,6 +522,55 @@ button:disabled {
   gap: 8px;
 }
 
+.overview-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.overview-card.warning {
+  border-color: var(--warning);
+}
+
+.overview-card-header {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+}
+
+.overview-card-name {
+  font-size: 9px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+
+.overview-card-main {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.overview-card.warning .overview-card-main {
+  color: var(--warning);
+}
+
+.overview-card-secondary {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
 .overview-item {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -675,4 +724,68 @@ button:disabled {
 .data-source-card button {
   padding: 6px 10px;
   font-size: 11px;
+}
+
+/* Overview item header with name */
+.overview-item-header {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.overview-name {
+  font-size: 9px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80px;
+}
+
+/* Detail view subheader */
+.detail-subheader {
+  padding: 6px 12px;
+  font-size: 10px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Smaller text for multi-value rows */
+.detail-value-small {
+  font-size: 10px;
+  letter-spacing: -0.02em;
+}
+
+/* Drive selector dropdown */
+.drive-selector {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 10px;
+  padding: 2px 4px;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.drive-selector:hover {
+  border-color: var(--accent);
+}
+
+.drive-selector:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Detail header with selector */
+.detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
 }
