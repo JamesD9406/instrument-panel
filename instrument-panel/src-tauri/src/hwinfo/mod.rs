@@ -25,6 +25,7 @@ pub fn read_sensor_data() -> SensorData {
                 cpu: CpuData::default(),
                 gpu: GpuData::default(),
                 storage: StorageData::default(),
+                drives: Vec::new(),
                 system: SystemData::default(),
             }
         }

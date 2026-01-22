@@ -10,6 +10,7 @@ pub struct SensorData {
     pub cpu: CpuData,
     pub gpu: GpuData,
     pub storage: StorageData,
+    pub drives: Vec<DriveData>,
     pub system: SystemData,
 }
 
@@ -27,6 +28,9 @@ pub struct CpuData {
     pub name: Option<String>,
     pub package_temp_c: Option<f64>,
     pub package_power_w: Option<f64>,
+    pub core_clock_mhz: Option<f64>,
+    pub usage_percent: Option<f64>,
+    pub core_temps: Vec<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -36,6 +40,13 @@ pub struct GpuData {
     pub hotspot_temp_c: Option<f64>,
     pub memory_junction_temp_c: Option<f64>,
     pub power_w: Option<f64>,
+    pub core_clock_mhz: Option<f64>,
+    pub memory_clock_mhz: Option<f64>,
+    pub usage_percent: Option<f64>,
+    pub vram_used_mb: Option<f64>,
+    pub vram_total_mb: Option<f64>,
+    pub fan_speed_rpm: Option<f64>,
+    pub fan_speed_percent: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -43,7 +54,7 @@ pub struct GpuData {
 pub struct StorageData {
     pub name: Option<String>,
     pub nvme_temp_c: Option<f64>,
-    pub smart_health: String, // "good" | "warning" | "unknown"
+    pub smart_health: String, // "good" | "warning" | "critical" | "unknown"
 }
 
 impl Default for StorageData {
@@ -58,10 +69,35 @@ impl Default for StorageData {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct DriveData {
+    pub name: Option<String>,
+    pub drive_letter: Option<String>,
+    pub temp_c: Option<f64>,
+    pub smart_health: String,
+    pub total_gb: Option<f64>,
+    pub free_gb: Option<f64>,
+}
+
+impl Default for DriveData {
+    fn default() -> Self {
+        Self {
+            name: None,
+            drive_letter: None,
+            temp_c: None,
+            smart_health: "unknown".to_string(),
+            total_gb: None,
+            free_gb: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SystemData {
     pub name: Option<String>,
     pub uptime_seconds: Option<u64>,
     pub fan_status: String, // "ok" | "warning" | "unknown"
+    pub fans: Vec<FanReading>,
 }
 
 impl Default for SystemData {
@@ -70,8 +106,16 @@ impl Default for SystemData {
             name: None,
             uptime_seconds: None,
             fan_status: "unknown".to_string(),
+            fans: Vec::new(),
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FanReading {
+    pub name: String,
+    pub rpm: f64,
 }
 
 // ============================================================

@@ -34,6 +34,34 @@ export function DataSourceCard({
     }
   }
 
+  const handleDumpReadings = async (filter: string | null) => {
+    try {
+      interface Reading {
+        index: number
+        sensorIndex: number
+        readingType: number
+        labelOriginal: string
+        labelUser: string
+        unit: string
+        value: number
+      }
+      const readings = await invoke("debug_dump_readings", { filter }) as Reading[]
+      const typeNames: Record<number, string> = {
+        0: "None", 1: "Temp", 2: "Voltage", 3: "Fan", 4: "Current",
+        5: "Power", 6: "Clock", 7: "Usage", 8: "Other"
+      }
+      const formatted = readings.map(r => ({
+        ...r,
+        type: typeNames[r.readingType] || r.readingType
+      }))
+      console.log(`=== HWiNFO Readings (filter: ${filter || 'none'}) ===`)
+      console.log(`Found ${readings.length} readings`)
+      console.table(formatted)
+    } catch (e) {
+      console.error("Failed to dump readings:", e)
+    }
+  }
+
   const handleLaunchHwinfo = async () => {
     setLaunching(true)
     try {
@@ -114,9 +142,20 @@ export function DataSourceCard({
                   <span>{data.diagnostics.message}</span>
                 </div>
               )}
-              <button onClick={handleDumpSensors} style={{ marginTop: "8px" }}>
-                Dump Sensors (Console)
-              </button>
+              <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                <button onClick={handleDumpSensors}>
+                  Dump Sensors (Console)
+                </button>
+                <button onClick={() => handleDumpReadings("cpu")}>
+                  Dump CPU Readings
+                </button>
+                <button onClick={() => handleDumpReadings("temp")}>
+                  Dump Temp Readings
+                </button>
+                <button onClick={() => handleDumpReadings("power")}>
+                  Dump Power Readings
+                </button>
+              </div>
             </div>
           )}
         </div>

@@ -25,7 +25,7 @@ pub fn get_sensor_data(app: tauri::AppHandle) -> SensorData {
     // Check if mock mode is enabled
     let settings = get_settings(app);
     if settings.mock_mode {
-        return hwinfo::mock::generate_mock_data();
+        return hwinfo::mock::read_mock_data();
     }
     
     hwinfo::read_sensor_data()
