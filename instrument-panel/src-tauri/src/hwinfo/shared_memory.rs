@@ -74,7 +74,7 @@ unsafe fn read_shared_memory() -> Result<SensorData, String> {
     let mut cpu_clock: Option<f64> = None;
     let mut cpu_usage: Option<f64> = None;
     let mut core_temps: Vec<f64> = Vec::new();
-    let mut cpu_sensor_index: Option<u32> = None;
+    let mut cpu_sensor_indices: Vec<u32> = Vec::new();
 
     // GPU data
     let mut gpu_hotspot: Option<f64> = None;
@@ -112,11 +112,12 @@ unsafe fn read_shared_memory() -> Result<SensorData, String> {
         let sensor_name_lower = sensor_name.to_lowercase();
 
         // CPU name - look for AMD Ryzen or Intel Core processors
-        if cpu_name.is_none() {
-            if sensor_name_lower.contains("ryzen") || sensor_name_lower.contains("intel") || sensor_name_lower.contains("core i") {
+        // Collect ALL matching sensor indices since CPU readings may be spread across multiple sensors
+        if sensor_name_lower.contains("ryzen") || sensor_name_lower.contains("intel") || sensor_name_lower.contains("core i") {
+            if cpu_name.is_none() {
                 cpu_name = Some(sensor_name.clone());
-                cpu_sensor_index = Some(i);
             }
+            cpu_sensor_indices.push(i);
         }
 
         // GPU name - prioritize discrete GPUs (NVIDIA) over integrated (AMD Radeon)
@@ -159,8 +160,10 @@ unsafe fn read_shared_memory() -> Result<SensorData, String> {
             .trim_end_matches('\0')
             .to_string();
 
-        let is_cpu = cpu_sensor_index.map_or(false, |idx| reading.sensor_index == idx);
-        let is_gpu = gpu_sensor_index.map_or(false, |idx| reading.sensor_index == idx);
+        // Copy sensor_index to local var to avoid unaligned reference from packed struct
+        let reading_sensor_index = reading.sensor_index;
+        let is_cpu = cpu_sensor_indices.contains(&reading_sensor_index);
+        let is_gpu = gpu_sensor_index.map_or(false, |idx| reading_sensor_index == idx);
 
         // CPU readings
         if is_cpu {
