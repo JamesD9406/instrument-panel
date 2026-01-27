@@ -100,7 +100,7 @@ export function GpuDetailView({ data }: Props) {
             </span>
           </div>
         )}
-        {gpu?.fanSpeedRpm && (
+        {gpu?.fanSpeedRpm != null && gpu.fanSpeedRpm > 0 && (
           <div className="detail-row">
             <span className="detail-label">Fan Speed</span>
             <span className="detail-value">
