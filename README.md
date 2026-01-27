@@ -46,6 +46,12 @@ This project demonstrates cross-platform desktop development with Rust backend, 
   <img src="public/screenshots/storage-details.png" width="100%" alt="Storage detail view with temperature, health, and disk space"/>
 </div>
 
+### 🟦 Diagnostic View
+<p>Development diagnostics panel showing connection status and debug tools to dump sensor readings to the Tauri console.</p>
+<div style="display: flex; gap: 12px; margin-bottom: 20px;">
+  <img src="public/screenshots/overview.png" width="100%" alt="Diagnostics dashboard used during testing."/>
+</div>
+
 ---
 
 ## 🚀 Features
