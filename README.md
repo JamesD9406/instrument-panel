@@ -25,31 +25,31 @@ This project demonstrates cross-platform desktop development with Rust backend, 
 ### 🟦 Overview Dashboard
 <p>Quick glance at CPU, GPU, Storage, and System status.</p>
 <div style="display: flex; gap: 12px; margin-bottom: 20px;">
-  <img src="public/screenshots/overview.png" width="100%" alt="Overview dashboard showing CPU, GPU, Storage, and System cards"/>
+  <img src="instrument-panel/public/screenshots/overview.png" width="100%" alt="Overview dashboard showing CPU, GPU, Storage, and System cards"/>
 </div>
 
 ### 🟧 CPU Details
 <p>Package temperature, power draw, clock speed, and usage.</p>
 <div style="display: flex; gap: 12px; margin-bottom: 20px;">
-  <img src="public/screenshots/cpu-details.png" width="100%" alt="CPU detail view with temperature, power, clock, and usage"/>
+  <img src="instrument-panel/public/screenshots/cpu-details.png" width="100%" alt="CPU detail view with temperature, power, clock, and usage"/>
 </div>
 
 ### 🟨 GPU Details
 <p>Hotspot temperature, memory junction, power draw, clocks, and usage.</p>
 <div style="display: flex; gap: 12px; margin-bottom: 20px;">
-  <img src="public/screenshots/gpu-details.png" width="100%" alt="GPU detail view with temperatures, power, clocks, and usage"/>
+  <img src="instrument-panel/public/screenshots/gpu_details.png" width="100%" alt="GPU detail view with temperatures, power, clocks, and usage"/>
 </div>
 
 ### 🟩 Storage Details
 <p>Drive temperature, SMART health, and disk space for all detected drives.</p>
 <div style="display: flex; gap: 12px; margin-bottom: 20px;">
-  <img src="public/screenshots/storage-details.png" width="100%" alt="Storage detail view with temperature, health, and disk space"/>
+  <img src="instrument-panel/public/screenshots/storage_details.png" width="100%" alt="Storage detail view with temperature, health, and disk space"/>
 </div>
 
 ### 🟦 Diagnostic View
 <p>Development diagnostics panel showing connection status and debug tools to dump sensor readings to the Tauri console.</p>
 <div style="display: flex; gap: 12px; margin-bottom: 20px;">
-  <img src="public/screenshots/overview.png" width="100%" alt="Diagnostics dashboard used during testing."/>
+  <img src="instrument-panel/public/screenshots/diagnostics_view.png" width="100%" alt="Diagnostics dashboard used during testing."/>
 </div>
 
 ---
