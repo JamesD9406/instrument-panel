@@ -20,7 +20,7 @@ function MetricRow({ label, value, unit, warningThreshold }: MetricRowProps) {
 
 interface StatusRowProps {
   label: string
-  status: "good" | "ok" | "warning" | "unknown"
+  status: "good" | "ok" | "warning" | "critical" | "unknown"
 }
 
 function StatusRow({ label, status }: StatusRowProps) {
@@ -28,6 +28,7 @@ function StatusRow({ label, status }: StatusRowProps) {
     good: "✓ Good",
     ok: "✓ OK",
     warning: "⚠ Warning",
+    critical: "✗ Critical",
     unknown: "— Unknown",
   }
 
