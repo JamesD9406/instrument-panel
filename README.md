@@ -16,7 +16,7 @@ This project demonstrates cross-platform desktop development with Rust backend, 
 >
 > This application is provided as a portfolio demonstration of my development work. It is designed specifically for my hardware configuration (AMD Ryzen 7 7800X3D, NVIDIA GeForce RTX 5070) and reads data from HWiNFO's shared memory interface.
 >
-> **No guarantees are made that this will work on your system.** Sensor names, indices, and data formats vary significantly between hardware configurations. The code is provided for review purposes to demonstrate Tauri/Rust/React development patterns. This is possibly the only legitmate use of 'Works on my machine!' that I can think of.
+> **No guarantees are made that this will work on your system.** Sensor names, indices, and data formats vary significantly between hardware configurations. The code is provided for review purposes to demonstrate Tauri/Rust/React development patterns. This is possibly the only time you will hear me say 'Works on my machine!', but in this case I think it is legitimate :)
 
 ---
 
